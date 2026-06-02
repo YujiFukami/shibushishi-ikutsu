@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>志布志市はいくつ？</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+
+        <header class="header">
+            <div class="header-inner">
+                <h1 class="title">志布志市はいくつ？</h1>
+                <p class="subtitle">ランダムな文字の中から <span class="target-word">志布志市</span> を探して、いくつあるか数えよう！</p>
+                <div class="rules">
+                    <span class="rule-item">8方向（横・縦・斜め）に探索</span>
+                    <span class="rule-sep">•</span>
+                    <span class="rule-item">志→布→志→市の順で4文字</span>
+                    <span class="rule-sep">•</span>
+                    <span class="rule-item">個数ぴったりで正解！</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="settings-section">
+            <div class="settings-inner">
+                <div class="size-selector">
+                    <label for="boardSize" class="settings-label">盤面サイズ</label>
+                    <select id="boardSize" class="select">
+                        <option value="4">4×4（初級）</option>
+                        <option value="5">5×5（初級）</option>
+                        <option value="6">6×6（初級）</option>
+                        <option value="7">7×7（中級）</option>
+                        <option value="8">8×8（中級）</option>
+                        <option value="9">9×9（中級）</option>
+                        <option value="10" selected>10×10（中級）</option>
+                        <option value="11">11×11（上級）</option>
+                        <option value="12">12×12（上級）</option>
+                        <option value="13">13×13（上級）</option>
+                        <option value="14">14×14（上級）</option>
+                        <option value="15">15×15（上級）</option>
+                        <option value="16">16×16（超上級）</option>
+                        <option value="17">17×17（超上級）</option>
+                        <option value="18">18×18（超上級）</option>
+                        <option value="19">19×19（超上級）</option>
+                        <option value="20">20×20（超上級）</option>
+                    </select>
+                </div>
+                <div class="btn-group">
+                    <button id="startBtn" class="btn btn-primary">ゲーム開始</button>
+                    <button id="regenBtn" class="btn btn-secondary" disabled>再生成</button>
+                    <button id="resetBtn" class="btn btn-ghost" disabled>リセット</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="gameSection" class="game-section" hidden>
+
+            <div class="board-outer">
+                <div class="board-wrapper" id="boardWrapper">
+                    <div id="board" class="board"></div>
+                    <svg id="svgOverlay" class="svg-overlay"></svg>
+                </div>
+            </div>
+
+            <div class="answer-section">
+                <p class="answer-prompt">「志布志市」は何個ありますか？</p>
+                <div class="answer-row">
+                    <input type="number" id="answerInput" class="answer-input" min="0" placeholder="0">
+                    <span class="unit">個</span>
+                    <button id="submitBtn" class="btn btn-primary">回答する</button>
+                </div>
+                <p id="errorMsg" class="error-msg" hidden></p>
+            </div>
+
+            <div id="resultSection" class="result-section" hidden>
+                <div class="result-stats">
+                    <div class="stat">
+                        <span class="stat-label">あなたの回答</span>
+                        <span id="userAnswerEl" class="stat-value"></span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat">
+                        <span class="stat-label">正解</span>
+                        <span id="correctAnswerEl" class="stat-value"></span>
+                    </div>
+                </div>
+                <div id="verdictEl" class="verdict"></div>
+                <p id="messageEl" class="result-message"></p>
+                <button id="nextBtn" class="btn btn-primary btn-large">次の問題へ</button>
+            </div>
+
+        </section>
+
+        <footer class="footer">
+            <p>鹿児島県志布志市 — 志布志市志布志町志布志2丁目1番1号</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
