@@ -17,9 +17,9 @@
                 <div class="rules">
                     <span class="rule-item">8方向（横・縦・斜め）に探索</span>
                     <span class="rule-sep">•</span>
-                    <span class="rule-item">志→布→志→市の順で4文字</span>
+                    <span class="rule-item">志→布→志→市の順に4マスクリック</span>
                     <span class="rule-sep">•</span>
-                    <span class="rule-item">個数ぴったりで正解！</span>
+                    <span class="rule-item">全部見つけたら回答完了！</span>
                 </div>
             </div>
         </header>
@@ -66,11 +66,15 @@
             </div>
 
             <div class="answer-section">
-                <p class="answer-prompt">「志布志市」は何個ありますか？</p>
+                <p class="answer-prompt">「志布志市」を盤面から探してクリックしよう！</p>
+                <p class="answer-hint">志 → 布 → 志 → 市 の順に4マスをクリック</p>
+                <div class="found-counter">
+                    <span id="foundCountEl" class="found-count">0個</span>
+                    <span class="found-label">発見中</span>
+                </div>
                 <div class="answer-row">
-                    <input type="number" id="answerInput" class="answer-input" min="0" placeholder="0">
-                    <span class="unit">個</span>
-                    <button id="submitBtn" class="btn btn-primary">回答する</button>
+                    <button id="clearBtn"  class="btn btn-ghost"   disabled>選択解除</button>
+                    <button id="finishBtn" class="btn btn-primary" disabled>回答完了</button>
                 </div>
                 <p id="errorMsg" class="error-msg" hidden></p>
             </div>
@@ -78,13 +82,13 @@
             <div id="resultSection" class="result-section" hidden>
                 <div class="result-stats">
                     <div class="stat">
-                        <span class="stat-label">あなたの回答</span>
-                        <span id="userAnswerEl" class="stat-value"></span>
+                        <span class="stat-label">発見した数</span>
+                        <span id="foundCountResultEl" class="stat-value"></span>
                     </div>
                     <div class="stat-divider"></div>
                     <div class="stat">
-                        <span class="stat-label">正解</span>
-                        <span id="correctAnswerEl" class="stat-value"></span>
+                        <span class="stat-label">正解数</span>
+                        <span id="totalCountResultEl" class="stat-value"></span>
                     </div>
                 </div>
                 <div id="verdictEl" class="verdict"></div>

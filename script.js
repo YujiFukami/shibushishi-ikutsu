@@ -1,31 +1,36 @@
 'use strict';
 
 // ── State ──────────────────────────────────────────────
-let board = null;
-let answers = null;
-let boardSize = 10;
-let answered = false;
+let board        = null;
+let answers      = null;
+let boardSize    = 10;
+let answered     = false;   // リサイズ判定との互換用
+let pendingCells = [];      // [{r,c},...] 選択中のセル（最大4）
+let pendingDir   = null;    // {dr,dc} | null  2セル目で確定する方向
+let foundIndices = [];      // answers[] の発見済みインデックス配列
+let gameFinished = false;   // 回答完了後は true
 
 // ── DOM ────────────────────────────────────────────────
-const boardSizeEl   = document.getElementById('boardSize');
-const startBtn      = document.getElementById('startBtn');
-const regenBtn      = document.getElementById('regenBtn');
-const resetBtn      = document.getElementById('resetBtn');
-const gameSection   = document.getElementById('gameSection');
-const boardEl       = document.getElementById('board');
-const svgOverlay    = document.getElementById('svgOverlay');
-const boardWrapper  = document.getElementById('boardWrapper');
-const answerInput   = document.getElementById('answerInput');
-const submitBtn     = document.getElementById('submitBtn');
-const errorMsg      = document.getElementById('errorMsg');
-const resultSection = document.getElementById('resultSection');
-const userAnswerEl  = document.getElementById('userAnswerEl');
-const correctAnswerEl = document.getElementById('correctAnswerEl');
-const verdictEl     = document.getElementById('verdictEl');
-const messageEl     = document.getElementById('messageEl');
-const nextBtn       = document.getElementById('nextBtn');
+const boardSizeEl        = document.getElementById('boardSize');
+const startBtn           = document.getElementById('startBtn');
+const regenBtn           = document.getElementById('regenBtn');
+const resetBtn           = document.getElementById('resetBtn');
+const gameSection        = document.getElementById('gameSection');
+const boardEl            = document.getElementById('board');
+const svgOverlay         = document.getElementById('svgOverlay');
+const boardWrapper       = document.getElementById('boardWrapper');
+const foundCountEl       = document.getElementById('foundCountEl');
+const clearBtn           = document.getElementById('clearBtn');
+const finishBtn          = document.getElementById('finishBtn');
+const errorMsg           = document.getElementById('errorMsg');
+const resultSection      = document.getElementById('resultSection');
+const foundCountResultEl = document.getElementById('foundCountResultEl');
+const totalCountResultEl = document.getElementById('totalCountResultEl');
+const verdictEl          = document.getElementById('verdictEl');
+const messageEl          = document.getElementById('messageEl');
+const nextBtn            = document.getElementById('nextBtn');
 
-// 答え合わせ線の色（最大10色でサイクル）
+// 矢印の色（最大10色でサイクル）
 const LINE_COLORS = [
     '#e53935', '#1e88e5', '#43a047', '#fb8c00',
     '#8e24aa', '#00acc1', '#e91e63', '#f9a825',
@@ -35,10 +40,20 @@ const LINE_COLORS = [
 // ── イベント ───────────────────────────────────────────
 startBtn.addEventListener('click', startGame);
 regenBtn.addEventListener('click', newBoard);
-resetBtn.addEventListener('click', resetAnswer);
-submitBtn.addEventListener('click', submitAnswer);
+resetBtn.addEventListener('click', newBoard);
+finishBtn.addEventListener('click', finishGame);
+clearBtn.addEventListener('click', () => clearPending());
 nextBtn.addEventListener('click', newBoard);
-answerInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitAnswer(); });
+
+// セルクリック（イベント委譲：boardEl に1回だけ登録）
+boardEl.addEventListener('click', e => {
+    const cell = e.target.closest('.cell');
+    if (!cell || gameFinished) return;
+    handleCellClick(
+        parseInt(cell.dataset.row, 10),
+        parseInt(cell.dataset.col, 10)
+    );
+});
 
 let resizeTimer;
 window.addEventListener('resize', () => {
@@ -46,7 +61,17 @@ window.addEventListener('resize', () => {
     resizeTimer = setTimeout(() => {
         if (!board) return;
         renderBoard(board);
-        if (answered) requestAnimationFrame(() => drawAnswerLines(answers));
+        requestAnimationFrame(() => {
+            reapplyCellClasses();
+            foundIndices.forEach((ansIdx, i) =>
+                drawSingleArrow(answers[ansIdx], LINE_COLORS[i % LINE_COLORS.length])
+            );
+            if (gameFinished) {
+                answers.forEach((a, i) => {
+                    if (!foundIndices.includes(i)) drawSingleArrow(a, '#aaaaaa');
+                });
+            }
+        });
     }, 150);
 });
 
@@ -60,42 +85,29 @@ function generateBoard(size) {
 
 // ── 正解探索（8方向） ──────────────────────────────────
 function findAnswers(b) {
-    const size = b.length;
+    const size   = b.length;
     const target = ['志', '布', '志', '市'];
-    const dirs = [
-        [ 0,  1], // →
-        [ 0, -1], // ←
-        [ 1,  0], // ↓
-        [-1,  0], // ↑
-        [ 1,  1], // ↘
-        [-1, -1], // ↖
-        [-1,  1], // ↗
-        [ 1, -1], // ↙
+    const dirs   = [
+        [ 0,  1], [ 0, -1], [ 1,  0], [-1,  0],
+        [ 1,  1], [-1, -1], [-1,  1], [ 1, -1],
     ];
     const result = [];
 
     for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
             if (b[r][c] !== '志') continue;
-
             for (const [dr, dc] of dirs) {
                 let valid = true;
                 for (let i = 0; i < 4; i++) {
-                    const nr = r + dr * i;
-                    const nc = c + dc * i;
+                    const nr = r + dr * i, nc = c + dc * i;
                     if (nr < 0 || nr >= size || nc < 0 || nc >= size || b[nr][nc] !== target[i]) {
-                        valid = false;
-                        break;
+                        valid = false; break;
                     }
                 }
-                if (valid) {
-                    result.push({
-                        startRow: r,
-                        startCol: c,
-                        endRow: r + dr * 3,
-                        endCol: c + dc * 3,
-                    });
-                }
+                if (valid) result.push({
+                    startRow: r, startCol: c,
+                    endRow: r + dr * 3, endCol: c + dc * 3,
+                });
             }
         }
     }
@@ -111,8 +123,8 @@ function calcCellSize(size) {
 // ── 盤面描画 ───────────────────────────────────────────
 function renderBoard(b) {
     const size = b.length;
-    const cs = calcCellSize(size);
-    const fs = Math.max(Math.floor(cs * 0.55), 11);
+    const cs   = calcCellSize(size);
+    const fs   = Math.max(Math.floor(cs * 0.55), 11);
 
     boardEl.style.gridTemplateColumns = `repeat(${size}, ${cs}px)`;
     boardEl.style.gridTemplateRows    = `repeat(${size}, ${cs}px)`;
@@ -131,45 +143,174 @@ function renderBoard(b) {
             boardEl.appendChild(cell);
         }
     }
-
     svgOverlay.innerHTML = '';
+}
+
+// ── ユーティリティ ─────────────────────────────────────
+function getCellEl(r, c) {
+    return boardEl.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+}
+
+function getCells4(ans) {
+    const dr = Math.sign(ans.endRow - ans.startRow);
+    const dc = Math.sign(ans.endCol - ans.startCol);
+    return Array.from({ length: 4 }, (_, i) =>
+        getCellEl(ans.startRow + dr * i, ans.startCol + dc * i)
+    );
+}
+
+function ensureSvgSize() {
+    const r = boardWrapper.getBoundingClientRect();
+    if (r.width === 0) return;
+    svgOverlay.setAttribute('width',   r.width);
+    svgOverlay.setAttribute('height',  r.height);
+    svgOverlay.setAttribute('viewBox', `0 0 ${r.width} ${r.height}`);
+}
+
+function updateFoundCounter() {
+    foundCountEl.textContent = `${foundIndices.length}個`;
+}
+
+// リサイズ後にセルのクラスを再付与
+function reapplyCellClasses() {
+    foundIndices.forEach((ansIdx, i) => {
+        const color = LINE_COLORS[i % LINE_COLORS.length];
+        getCells4(answers[ansIdx]).forEach(el => {
+            if (!el) return;
+            el.classList.add('found');
+            el.style.setProperty('--found-color', color);
+        });
+    });
+    if (gameFinished) {
+        answers.forEach((a, i) => {
+            if (foundIndices.includes(i)) return;
+            getCells4(a).forEach(el => {
+                if (!el || el.classList.contains('found')) return;
+                el.classList.add('missed');
+            });
+        });
+    }
+}
+
+// ── 選択管理 ───────────────────────────────────────────
+function clearPending() {
+    pendingCells = [];
+    pendingDir   = null;
+    boardEl.querySelectorAll('.cell.pending').forEach(el =>
+        el.classList.remove('pending')
+    );
+}
+
+function applyPendingStyles() {
+    boardEl.querySelectorAll('.cell.pending').forEach(el =>
+        el.classList.remove('pending')
+    );
+    pendingCells.forEach(({ r, c }) => getCellEl(r, c)?.classList.add('pending'));
+}
+
+function flashPending(type) {
+    const cls = type === 'duplicate' ? 'flash-duplicate' : 'flash-error';
+    const targets = pendingCells.map(({ r, c }) => getCellEl(r, c)).filter(Boolean);
+    targets.forEach(el => { el.classList.remove('pending'); el.classList.add(cls); });
+    setTimeout(() => {
+        clearPending();
+        targets.forEach(el => el.classList.remove(cls));
+    }, 500);
+}
+
+// ── セルクリックハンドラ ───────────────────────────────
+function handleCellClick(r, c) {
+    // 1文字目：志のみ受け付ける
+    if (pendingCells.length === 0) {
+        if (board[r][c] !== '志') return;
+        pendingCells = [{ r, c }];
+        pendingDir   = null;
+        applyPendingStyles();
+        return;
+    }
+
+    // 同一セルを再クリック → 選択解除
+    if (pendingCells.some(p => p.r === r && p.c === c)) {
+        clearPending();
+        return;
+    }
+
+    const last = pendingCells[pendingCells.length - 1];
+    const dr   = r - last.r;
+    const dc   = c - last.c;
+
+    // 2文字目：方向確定
+    if (pendingCells.length === 1) {
+        if (Math.abs(dr) > 1 || Math.abs(dc) > 1) { clearPending(); return; }
+        if (board[r][c] !== '布') { flashPending('error'); return; }
+        pendingDir = { dr, dc };
+        pendingCells.push({ r, c });
+        applyPendingStyles();
+        return;
+    }
+
+    // 3・4文字目：方向一貫性チェック
+    const expectedChar = ['志', '布', '志', '市'][pendingCells.length];
+    if (dr !== pendingDir.dr || dc !== pendingDir.dc) { flashPending('error'); return; }
+    if (board[r][c] !== expectedChar) { flashPending('error'); return; }
+
+    pendingCells.push({ r, c });
+    applyPendingStyles();
+
+    if (pendingCells.length === 4) validateAndConfirm();
+}
+
+function validateAndConfirm() {
+    const s = pendingCells[0], e = pendingCells[3];
+    const matchIdx = answers.findIndex(a =>
+        a.startRow === s.r && a.startCol === s.c &&
+        a.endRow   === e.r && a.endCol   === e.c
+    );
+    if (matchIdx === -1)                    { flashPending('error');     return; }
+    if (foundIndices.includes(matchIdx))    { flashPending('duplicate'); return; }
+    confirmFound(matchIdx);
+}
+
+function confirmFound(matchIdx) {
+    foundIndices.push(matchIdx);
+    const color = LINE_COLORS[(foundIndices.length - 1) % LINE_COLORS.length];
+
+    pendingCells.forEach(({ r, c }) => {
+        const el = getCellEl(r, c);
+        if (!el) return;
+        el.classList.remove('pending');
+        el.classList.add('found');
+        el.style.setProperty('--found-color', color);
+    });
+
+    drawSingleArrow(answers[matchIdx], color);
+    updateFoundCounter();
+    clearPending();
 }
 
 // ── SVG 矢印描画 ───────────────────────────────────────
-function drawAnswerLines(ans) {
-    svgOverlay.innerHTML = '';
-    if (!ans.length) return;
-
-    const wRect = boardWrapper.getBoundingClientRect();
-    svgOverlay.setAttribute('width',   wRect.width);
-    svgOverlay.setAttribute('height',  wRect.height);
-    svgOverlay.setAttribute('viewBox', `0 0 ${wRect.width} ${wRect.height}`);
-
-    ans.forEach((a, idx) => {
-        const color = LINE_COLORS[idx % LINE_COLORS.length];
-
-        const startEl = boardEl.querySelector(`[data-row="${a.startRow}"][data-col="${a.startCol}"]`);
-        const endEl   = boardEl.querySelector(`[data-row="${a.endRow}"][data-col="${a.endCol}"]`);
-        if (!startEl || !endEl) return;
-
-        const sr = startEl.getBoundingClientRect();
-        const er = endEl.getBoundingClientRect();
-        const x1 = sr.left - wRect.left + sr.width  / 2;
-        const y1 = sr.top  - wRect.top  + sr.height / 2;
-        const x2 = er.left - wRect.left + er.width  / 2;
-        const y2 = er.top  - wRect.top  + er.height / 2;
-
-        drawArrow(x1, y1, x2, y2, color);
-    });
+function drawSingleArrow(ans, color) {
+    ensureSvgSize();
+    const wRect   = boardWrapper.getBoundingClientRect();
+    const startEl = getCellEl(ans.startRow, ans.startCol);
+    const endEl   = getCellEl(ans.endRow,   ans.endCol);
+    if (!startEl || !endEl) return;
+    const sr = startEl.getBoundingClientRect();
+    const er = endEl.getBoundingClientRect();
+    drawArrow(
+        sr.left - wRect.left + sr.width  / 2,
+        sr.top  - wRect.top  + sr.height / 2,
+        er.left - wRect.left + er.width  / 2,
+        er.top  - wRect.top  + er.height / 2,
+        color
+    );
 }
 
-// 矢印を手動描画（SVG marker url() を使わず全ブラウザで動作）
 function drawArrow(x1, y1, x2, y2, color) {
     const ARROW_LEN = 10;
     const ARROW_WID = 5.5;
     const angle = Math.atan2(y2 - y1, x2 - x1);
 
-    // 線（矢印頭の手前で止める）
     const lx2 = x2 - ARROW_LEN * 0.65 * Math.cos(angle);
     const ly2 = y2 - ARROW_LEN * 0.65 * Math.sin(angle);
     svgOverlay.appendChild(svgEl('line', {
@@ -178,7 +319,6 @@ function drawArrow(x1, y1, x2, y2, color) {
         'stroke-opacity': .85, 'stroke-linecap': 'round',
     }));
 
-    // 矢印頭（ポリゴン）
     const bx = x2 - ARROW_LEN * Math.cos(angle);
     const by = y2 - ARROW_LEN * Math.sin(angle);
     const lx = bx - ARROW_WID * Math.sin(angle);
@@ -190,7 +330,6 @@ function drawArrow(x1, y1, x2, y2, color) {
         fill: color, 'fill-opacity': .85,
     }));
 
-    // 始点マーカー（丸）
     svgOverlay.appendChild(svgEl('circle', {
         cx: x1, cy: y1, r: 5,
         fill: color, 'fill-opacity': .85,
@@ -212,83 +351,69 @@ function startGame() {
 }
 
 function newBoard() {
-    board   = generateBoard(boardSize);
-    answers = findAnswers(board);
-    answered = false;
+    board        = generateBoard(boardSize);
+    answers      = findAnswers(board);
+    answered     = false;
+    pendingCells = [];
+    pendingDir   = null;
+    foundIndices = [];
+    gameFinished = false;
 
     renderBoard(board);
 
-    answerInput.value    = '';
-    answerInput.disabled = false;
-    submitBtn.disabled   = false;
     errorMsg.hidden      = true;
     resultSection.hidden = true;
-    svgOverlay.innerHTML = '';
-
-    regenBtn.disabled = false;
-    resetBtn.disabled = false;
+    finishBtn.disabled   = false;
+    clearBtn.disabled    = false;
+    regenBtn.disabled    = false;
+    resetBtn.disabled    = false;
+    updateFoundCounter();
 }
 
-function resetAnswer() {
-    if (!board) return;
-    answerInput.value    = '';
-    answerInput.disabled = false;
-    submitBtn.disabled   = false;
-    errorMsg.hidden      = true;
-    resultSection.hidden = true;
-    svgOverlay.innerHTML = '';
-    answered = false;
-}
+function finishGame() {
+    if (gameFinished) return;
+    gameFinished = true;
+    answered     = true;
+    clearPending();
+    finishBtn.disabled = true;
+    clearBtn.disabled  = true;
 
-function submitAnswer() {
-    const raw = answerInput.value.trim();
+    const total     = answers.length;
+    const found     = foundIndices.length;
+    const isCorrect = found === total;
 
-    if (raw === '') {
-        showError('個数を入力してください');
-        return;
-    }
-    if (!/^\d+$/.test(raw)) {
-        showError('0以上の整数で入力してください（小数・マイナス不可）');
-        return;
-    }
-
-    const userNum    = parseInt(raw, 10);
-    const correctNum = answers.length;
-    const isCorrect  = userNum === correctNum;
-    answered = true;
-
-    userAnswerEl.textContent    = `${userNum}個`;
-    correctAnswerEl.textContent = `${correctNum}個`;
-    verdictEl.textContent  = isCorrect ? '正解！' : '不正解';
-    verdictEl.className    = `verdict ${isCorrect ? 'correct' : 'wrong'}`;
-    messageEl.textContent  = buildMessage(isCorrect, userNum, correctNum);
-
-    resultSection.hidden = false;
-    answerInput.disabled = true;
-    submitBtn.disabled   = true;
-    errorMsg.hidden      = true;
-
-    requestAnimationFrame(() => {
-        drawAnswerLines(answers);
-        resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // 見逃し分をグレーで描画
+    answers.forEach((a, i) => {
+        if (foundIndices.includes(i)) return;
+        drawSingleArrow(a, '#aaaaaa');
+        getCells4(a).forEach(el => {
+            if (!el || el.classList.contains('found')) return;
+            el.classList.add('missed');
+        });
     });
+
+    foundCountResultEl.textContent = `${found}個`;
+    totalCountResultEl.textContent = `${total}個`;
+    verdictEl.textContent = isCorrect ? '正解！' : '不正解';
+    verdictEl.className   = `verdict ${isCorrect ? 'correct' : 'wrong'}`;
+    messageEl.textContent = buildMessage(isCorrect, found, total);
+    resultSection.hidden  = false;
+
+    requestAnimationFrame(() =>
+        resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    );
 }
 
-function buildMessage(isCorrect, user, ans) {
+function buildMessage(isCorrect, found, total) {
     if (isCorrect) {
-        if (ans === 0) return '0個を正確に当てました！見事な観察力です。';
-        if (ans === 1) return '正確に1個を見つけました！';
-        if (ans >= 8)  return `全${ans}個！難問を完璧に攻略しましたね。`;
-        return `全${ans}個を正確に数えました！すごい！`;
+        if (total === 0) return '1個もない盤面を正確に見抜きました！';
+        if (total === 1) return '1個を確実に見つけました！';
+        if (total >= 8)  return `全${total}個！難問を完全攻略しましたね。`;
+        return `全${total}個をすべて発見しました！すごい！`;
     }
-    if (ans === 0)           return '実は1個もありませんでした。志布志市は隠れていませんでした！';
-    if (user === 0 && ans > 0) return `実は${ans}個隠れていました。盤面を確認してみましょう。`;
-    const diff = user - ans;
-    if (diff > 0) return `${diff}個多かったです。正解箇所を確認しましょう。`;
-    return `あと${-diff}個足りませんでした。正解箇所を確認しましょう。`;
-}
-
-function showError(msg) {
-    errorMsg.textContent = msg;
-    errorMsg.hidden = false;
+    const missed = total - found;
+    if (total === 0)  return '実はこの盤面には1個もありませんでした！';
+    if (found === 0)  return `${total}個すべて見逃しました。グレーの箇所を確認しましょう。`;
+    if (missed === 1) return `惜しい！あと1個見つけられませんでした。`;
+    return `${missed}個見逃しました。グレーの箇所を確認しましょう。`;
 }

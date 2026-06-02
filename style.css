@@ -272,8 +272,49 @@ body {
     background: var(--cell-bg);
     font-weight: 700;
     color: var(--text);
-    cursor: default;
+    cursor: pointer;
+    position: relative;
 }
+
+/* 選択中（pending） */
+.cell.pending {
+    background: #e3f2fd;
+    outline: 2.5px solid #1e88e5;
+    outline-offset: -2px;
+    z-index: 1;
+}
+
+/* 発見済み（JS側で --found-color をセット） */
+.cell.found::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: var(--found-color, #1e88e5);
+    opacity: .25;
+    pointer-events: none;
+}
+
+/* 見逃し（回答完了後にグレー表示） */
+.cell.missed::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: #888;
+    opacity: .18;
+    pointer-events: none;
+}
+
+/* フラッシュアニメーション */
+@keyframes flash-error {
+    0%, 100% { background-color: var(--cell-bg); }
+    30%, 70%  { background-color: #ffcdd2; }
+}
+@keyframes flash-duplicate {
+    0%, 100% { background-color: var(--cell-bg); }
+    30%, 70%  { background-color: #ffe0b2; }
+}
+.cell.flash-error     { animation: flash-error 0.5s ease; }
+.cell.flash-duplicate { animation: flash-duplicate 0.5s ease; }
 
 .svg-overlay {
     position: absolute;
@@ -299,7 +340,36 @@ body {
     font-size: 1.05rem;
     font-weight: 700;
     color: var(--primary);
+    margin-bottom: 8px;
+}
+
+.answer-hint {
+    font-size: .85rem;
+    color: #777;
     margin-bottom: 16px;
+}
+
+/* 発見カウンター */
+.found-counter {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.found-count {
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: var(--primary);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.found-label {
+    font-size: .85rem;
+    color: var(--text-muted);
+    font-weight: 600;
 }
 
 .answer-row {
