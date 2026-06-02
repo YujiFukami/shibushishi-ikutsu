@@ -442,6 +442,26 @@ body {
     font-size: .78rem;
     border-top: 1px solid #e8e0d4;
     margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.footer-logo-link {
+    display: inline-block;
+    opacity: .65;
+    transition: opacity .2s;
+}
+
+.footer-logo-link:hover {
+    opacity: 1;
+}
+
+.footer-logo {
+    height: 26px;
+    width: auto;
+    display: block;
 }
 
 /* ── Responsive ───────────────────── */
