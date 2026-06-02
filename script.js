@@ -29,6 +29,7 @@ const totalCountResultEl = document.getElementById('totalCountResultEl');
 const verdictEl          = document.getElementById('verdictEl');
 const messageEl          = document.getElementById('messageEl');
 const nextBtn            = document.getElementById('nextBtn');
+const shareBtn           = document.getElementById('shareBtn');
 
 // 矢印の色（最大10色でサイクル）
 const LINE_COLORS = [
@@ -363,6 +364,7 @@ function newBoard() {
 
     errorMsg.hidden      = true;
     resultSection.hidden = true;
+    shareBtn.hidden      = true;
     finishBtn.disabled   = false;
     clearBtn.disabled    = false;
     regenBtn.disabled    = false;
@@ -399,9 +401,29 @@ function finishGame() {
     messageEl.textContent = buildMessage(isCorrect, found, total);
     resultSection.hidden  = false;
 
+    // X（Twitter）共有ボタンを設定して表示
+    shareBtn.href   = buildShareUrl(isCorrect, found, total);
+    shareBtn.hidden = false;
+
     requestAnimationFrame(() =>
         resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     );
+}
+
+function buildShareUrl(isCorrect, found, total) {
+    const appUrl = 'https://shibushishi-ikutsu.vercel.app/';
+    let text;
+    if (isCorrect) {
+        if (total === 0) {
+            text = `【志布志市はいくつ？】${boardSize}×${boardSize}の盤面で0個を正確に見抜きました！`;
+        } else {
+            text = `【志布志市はいくつ？】${boardSize}×${boardSize}の盤面で志布志市を全${total}個発見しました！`;
+        }
+    } else {
+        text = `【志布志市はいくつ？】${boardSize}×${boardSize}の盤面で志布志市を${found}/${total}個発見しました！`;
+    }
+    text += '\n#志布志市はいくつ';
+    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(appUrl)}`;
 }
 
 function buildMessage(isCorrect, found, total) {

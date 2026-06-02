@@ -231,6 +231,26 @@ body {
     border-radius: 10px;
 }
 
+.btn-x {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 12px 24px;
+    background: #000;
+    color: #fff;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background .18s, transform .18s;
+    letter-spacing: .02em;
+}
+
+.btn-x:hover {
+    background: #222;
+    transform: translateY(-1px);
+}
+
 /* ── Game Section ─────────────────── */
 .game-section {
     display: flex;
@@ -504,6 +524,14 @@ body {
     max-width: 360px;
 }
 
+.result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+}
+
 /* ── Footer ───────────────────────── */
 .footer {
     text-align: center;
@@ -532,6 +560,18 @@ body {
     height: 26px;
     width: auto;
     display: block;
+}
+
+.footer-city-link {
+    color: #999;
+    font-size: .78rem;
+    text-decoration: none;
+    border-bottom: 1px dotted #ccc;
+    transition: color .2s;
+}
+
+.footer-city-link:hover {
+    color: var(--primary);
 }
 
 /* ── Responsive ───────────────────── */
