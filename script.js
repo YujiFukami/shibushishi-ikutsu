@@ -37,6 +37,18 @@ const messageEl          = document.getElementById('messageEl');
 const nextBtn            = document.getElementById('nextBtn');
 const shareBtn           = document.getElementById('shareBtn');
 
+// ランキング
+const rankingBtn         = document.getElementById('rankingBtn');
+const rankingRegister    = document.getElementById('rankingRegister');
+const playerNameInput    = document.getElementById('playerNameInput');
+const registerBtn        = document.getElementById('registerBtn');
+const rankResultEl       = document.getElementById('rankResultEl');
+const rankingModal       = document.getElementById('rankingModal');
+const closeRankingBtn    = document.getElementById('closeRankingBtn');
+const rankingBoardSize   = document.getElementById('rankingBoardSize');
+const loadRankingBtn     = document.getElementById('loadRankingBtn');
+const rankingTableArea   = document.getElementById('rankingTableArea');
+
 // 矢印の色（最大10色でサイクル）
 const LINE_COLORS = [
     '#e53935', '#1e88e5', '#43a047', '#fb8c00',
@@ -78,6 +90,13 @@ resetBtn.addEventListener('click', newBoard);
 finishBtn.addEventListener('click', finishGame);
 clearBtn.addEventListener('click', () => clearPending());
 nextBtn.addEventListener('click', newBoard);
+
+// ランキング
+rankingBtn.addEventListener('click', () => openRankingModal());
+closeRankingBtn.addEventListener('click', () => closeRankingModal());
+rankingModal.addEventListener('click', e => { if (e.target === rankingModal) closeRankingModal(); });
+loadRankingBtn.addEventListener('click', () => loadRanking(parseInt(rankingBoardSize.value)));
+registerBtn.addEventListener('click', handleRegister);
 
 boardEl.addEventListener('click', e => {
     const cell = e.target.closest('.cell');
@@ -403,10 +422,11 @@ function newBoard() {
 
     renderBoard(board);
 
-    errorMsg.hidden      = true;
-    resultSection.hidden = true;
-    shareBtn.hidden      = true;
-    finishBtn.disabled   = false;
+    errorMsg.hidden        = true;
+    resultSection.hidden   = true;
+    shareBtn.hidden        = true;
+    rankingRegister.hidden = true;
+    finishBtn.disabled     = false;
     clearBtn.disabled    = false;
     regenBtn.disabled    = false;
     resetBtn.disabled    = false;
@@ -454,6 +474,19 @@ function finishGame() {
     shareBtn.href   = buildShareUrl(isCorrect, found, total, clearSec);
     shareBtn.hidden = false;
 
+    // クリア時のみランキング登録UIを表示
+    if (isCorrect) {
+        rankingRegister.hidden = false;
+        playerNameInput.value  = '';
+        playerNameInput.disabled = false;
+        registerBtn.disabled   = false;
+        rankResultEl.hidden    = true;
+        // ランキングのボードサイズセレクタをプレイ中のサイズに合わせる
+        rankingBoardSize.value = String(boardSize);
+    } else {
+        rankingRegister.hidden = true;
+    }
+
     requestAnimationFrame(() =>
         resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     );
@@ -483,4 +516,110 @@ function buildShareUrl(isCorrect, found, total, sec) {
     }
     text += '\n#志布志市はいくつ';
     return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(appUrl)}`;
+}
+
+// ── ランキング ─────────────────────────────────────────
+async function handleRegister() {
+    const name = playerNameInput.value.trim();
+    if (!name) {
+        playerNameInput.focus();
+        return;
+    }
+    const sec = parseFloat(clearTimeEl.textContent);
+
+    registerBtn.disabled     = true;
+    playerNameInput.disabled = true;
+    rankResultEl.textContent = '登録中...';
+    rankResultEl.hidden      = false;
+    rankResultEl.className   = 'rank-result';
+
+    try {
+        const res = await fetch('/api/ranking', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                action: 'register',
+                data:   { boardSize, playerName: name, clearTimeSec: sec }
+            })
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || '登録に失敗しました');
+
+        const { rank, totalPlayers } = json.result;
+        let msg = `${totalPlayers}人中 ${rank}位 に登録されました！`;
+        if (rank === 1) msg = `🏆 1位！トップタイムです！おめでとうございます！`;
+        else if (rank <= 3) msg = `🎉 ${rank}位！すごい！`;
+
+        rankResultEl.textContent = msg;
+        rankResultEl.className   = `rank-result${rank <= 3 ? ' rank-top' : ''}`;
+    } catch (err) {
+        rankResultEl.textContent = `登録できませんでした（${err.message}）`;
+        registerBtn.disabled     = false;
+        playerNameInput.disabled = false;
+    }
+}
+
+function openRankingModal() {
+    rankingModal.hidden = false;
+    loadRanking(parseInt(rankingBoardSize.value));
+}
+
+function closeRankingModal() {
+    rankingModal.hidden = true;
+}
+
+async function loadRanking(size) {
+    rankingBoardSize.value      = String(size);
+    rankingTableArea.innerHTML  = '<p class="ranking-loading">読み込み中...</p>';
+
+    try {
+        const res = await fetch(`/api/ranking?action=ranking&boardSize=${size}&limit=20`);
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || '取得に失敗しました');
+        renderRankingTable(json.result);
+    } catch (err) {
+        rankingTableArea.innerHTML =
+            `<p class="ranking-error">ランキングを取得できませんでした<br>${err.message}</p>`;
+    }
+}
+
+function renderRankingTable(rows) {
+    if (!rows || rows.length === 0) {
+        rankingTableArea.innerHTML = '<p class="ranking-empty">まだ記録がありません</p>';
+        return;
+    }
+
+    const medalClass = (r) => r === 1 ? 'rank-1' : r === 2 ? 'rank-2' : r === 3 ? 'rank-3' : '';
+    const medal      = (r) => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r;
+
+    const tbody = rows.map(row => `
+        <tr>
+            <td><span class="rank-num ${medalClass(row.rank)}">${medal(row.rank)}</span></td>
+            <td>${escapeHtml(row.playerName)}</td>
+            <td class="rank-time">${row.clearTimeSec.toFixed(1)}秒</td>
+            <td class="rank-date">${row.date}</td>
+        </tr>
+    `).join('');
+
+    rankingTableArea.innerHTML = `
+        <table class="ranking-table">
+            <thead>
+                <tr>
+                    <th>順位</th>
+                    <th>名前</th>
+                    <th>タイム</th>
+                    <th>日付</th>
+                </tr>
+            </thead>
+            <tbody>${tbody}</tbody>
+        </table>
+    `;
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }

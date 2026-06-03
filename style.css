@@ -544,6 +544,219 @@ body {
     align-items: center;
 }
 
+/* ── ランキング登録（結果画面内） ──── */
+.ranking-register {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+    text-align: center;
+    width: 100%;
+}
+
+.ranking-register-title {
+    font-size: .9rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 12px;
+}
+
+.ranking-input-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+}
+
+.ranking-name-input {
+    padding: 9px 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    width: 180px;
+    transition: border-color .2s;
+}
+
+.ranking-name-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.ranking-name-input:disabled {
+    background: #f5f5f5;
+    color: #999;
+}
+
+.rank-result {
+    margin-top: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.6;
+}
+
+.rank-result.rank-top {
+    color: #e65100;
+    font-size: 1.1rem;
+}
+
+/* ── ランキングモーダル ────────────── */
+.ranking-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 16px;
+    backdrop-filter: blur(2px);
+}
+
+.ranking-modal-inner {
+    background: white;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 16px 48px rgba(0,0,0,.25);
+    display: flex;
+    flex-direction: column;
+}
+
+.ranking-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #eee;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+}
+
+.ranking-modal-title {
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: var(--primary);
+}
+
+.ranking-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: #888;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+    border-radius: 6px;
+    transition: background .15s;
+}
+
+.ranking-close-btn:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.ranking-size-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 24px;
+    border-bottom: 1px solid #f5f5f5;
+    flex-wrap: wrap;
+}
+
+.ranking-size-row .select {
+    flex: 1;
+    min-width: 140px;
+}
+
+.ranking-table-area {
+    padding: 16px 24px 24px;
+    flex: 1;
+}
+
+.ranking-loading {
+    text-align: center;
+    color: #aaa;
+    padding: 24px 0;
+    font-size: .9rem;
+}
+
+.ranking-empty {
+    text-align: center;
+    color: #aaa;
+    padding: 32px 0;
+    font-size: .9rem;
+}
+
+.ranking-error {
+    text-align: center;
+    color: var(--accent);
+    padding: 16px;
+    font-size: .9rem;
+    background: rgba(192,57,43,.06);
+    border-radius: 8px;
+}
+
+.ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .9rem;
+}
+
+.ranking-table th {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 2px solid #eee;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.ranking-table td {
+    padding: 10px 10px;
+    border-bottom: 1px solid #f5f5f5;
+    vertical-align: middle;
+}
+
+.ranking-table tr:last-child td {
+    border-bottom: none;
+}
+
+.ranking-table tr.my-record td {
+    background: rgba(27,58,107,.05);
+    font-weight: 700;
+}
+
+.rank-num {
+    font-weight: 800;
+    color: var(--text-muted);
+    font-size: .95rem;
+    width: 36px;
+    text-align: center;
+}
+
+.rank-num.rank-1 { color: #f9a825; font-size: 1.1rem; }
+.rank-num.rank-2 { color: #9e9e9e; }
+.rank-num.rank-3 { color: #a1887f; }
+
+.rank-time {
+    font-weight: 800;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+}
+
+.rank-date {
+    color: #bbb;
+    font-size: .82rem;
+}
+
 /* ── Footer ───────────────────────── */
 .footer {
     text-align: center;

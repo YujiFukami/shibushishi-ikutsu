@@ -53,6 +53,7 @@
                     <button id="startBtn" class="btn btn-primary">ゲーム開始</button>
                     <button id="regenBtn" class="btn btn-secondary" disabled>再生成</button>
                     <button id="resetBtn" class="btn btn-ghost" disabled>リセット</button>
+                    <button id="rankingBtn" class="btn btn-ghost">ランキング</button>
                 </div>
             </div>
         </section>
@@ -114,9 +115,55 @@
                         Xでシェア
                     </a>
                 </div>
-            </div>
 
+                <!-- ランキング登録（クリア時のみ表示） -->
+                <div id="rankingRegister" class="ranking-register" hidden>
+                    <div class="ranking-register-title">ランキングに登録する</div>
+                    <div class="ranking-input-row">
+                        <input type="text" id="playerNameInput" class="ranking-name-input"
+                               placeholder="お名前（最大10文字）" maxlength="10">
+                        <button id="registerBtn" class="btn btn-primary">登録</button>
+                    </div>
+                    <p id="rankResultEl" class="rank-result" hidden></p>
+                </div>
+            </div>
         </section>
+
+        <!-- ランキングモーダル -->
+        <div id="rankingModal" class="ranking-modal" hidden>
+            <div class="ranking-modal-inner">
+                <div class="ranking-modal-header">
+                    <h2 class="ranking-modal-title">ランキング</h2>
+                    <button id="closeRankingBtn" class="ranking-close-btn">×</button>
+                </div>
+                <div class="ranking-size-row">
+                    <label class="settings-label">盤面サイズ</label>
+                    <select id="rankingBoardSize" class="select">
+                        <option value="4">4×4（初級）</option>
+                        <option value="5">5×5（初級）</option>
+                        <option value="6">6×6（初級）</option>
+                        <option value="7">7×7（中級）</option>
+                        <option value="8">8×8（中級）</option>
+                        <option value="9">9×9（中級）</option>
+                        <option value="10" selected>10×10（中級）</option>
+                        <option value="11">11×11（上級）</option>
+                        <option value="12">12×12（上級）</option>
+                        <option value="13">13×13（上級）</option>
+                        <option value="14">14×14（上級）</option>
+                        <option value="15">15×15（上級）</option>
+                        <option value="16">16×16（超上級）</option>
+                        <option value="17">17×17（超上級）</option>
+                        <option value="18">18×18（超上級）</option>
+                        <option value="19">19×19（超上級）</option>
+                        <option value="20">20×20（超上級）</option>
+                    </select>
+                    <button id="loadRankingBtn" class="btn btn-secondary">表示</button>
+                </div>
+                <div id="rankingTableArea" class="ranking-table-area">
+                    <p class="ranking-loading">読み込み中...</p>
+                </div>
+            </div>
+        </div>
 
         <footer class="footer">
             <a href="https://www.softex-celware.com/" target="_blank" rel="noopener noreferrer" class="footer-logo-link">
