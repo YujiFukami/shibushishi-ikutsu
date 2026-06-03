@@ -13,13 +13,13 @@
         <header class="header">
             <div class="header-inner">
                 <h1 class="title">志布志市はいくつ？</h1>
-                <p class="subtitle">ランダムな文字の中から <span class="target-word">志布志市</span> を探して、いくつあるか数えよう！</p>
+                <p class="subtitle">ランダムな文字の中から <span class="target-word">志布志市</span> を全部見つけよう！タイムを競え！</p>
                 <div class="rules">
                     <span class="rule-item">8方向（横・縦・斜め）に探索</span>
                     <span class="rule-sep">•</span>
                     <span class="rule-item">志→布→志→市の順に4マスクリック</span>
                     <span class="rule-sep">•</span>
-                    <span class="rule-item">全部見つけたら回答完了！</span>
+                    <span class="rule-item">全発見で自動クリア！</span>
                 </div>
             </div>
         </header>
@@ -66,15 +66,21 @@
             </div>
 
             <div class="answer-section">
-                <p class="answer-prompt">「志布志市」を盤面から探してクリックしよう！</p>
+                <p class="answer-prompt">「志布志市」を全部見つけよう！</p>
                 <p class="answer-hint">志 → 布 → 志 → 市 の順に4マスをクリック</p>
-                <div class="found-counter">
-                    <span id="foundCountEl" class="found-count">0個</span>
-                    <span class="found-label">発見中</span>
+                <div class="game-hud">
+                    <div class="hud-item">
+                        <span id="foundCountEl" class="hud-value">0 / 0</span>
+                        <span class="hud-label">発見</span>
+                    </div>
+                    <div class="hud-item">
+                        <span id="timerEl" class="hud-value hud-value--timer">0.0</span>
+                        <span class="hud-label">秒</span>
+                    </div>
                 </div>
                 <div class="answer-row">
                     <button id="clearBtn"  class="btn btn-ghost"   disabled>選択解除</button>
-                    <button id="finishBtn" class="btn btn-primary" disabled>回答完了</button>
+                    <button id="finishBtn" class="btn btn-primary" disabled>ギブアップ</button>
                 </div>
                 <p id="errorMsg" class="error-msg" hidden></p>
             </div>
@@ -82,13 +88,18 @@
             <div id="resultSection" class="result-section" hidden>
                 <div class="result-stats">
                     <div class="stat">
-                        <span class="stat-label">発見した数</span>
+                        <span class="stat-label">発見</span>
                         <span id="foundCountResultEl" class="stat-value"></span>
                     </div>
                     <div class="stat-divider"></div>
                     <div class="stat">
                         <span class="stat-label">正解数</span>
                         <span id="totalCountResultEl" class="stat-value"></span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat">
+                        <span class="stat-label">タイム</span>
+                        <span id="clearTimeEl" class="stat-value hud-value--timer"></span>
                     </div>
                 </div>
                 <div id="verdictEl" class="verdict"></div>

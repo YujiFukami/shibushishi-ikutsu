@@ -4,11 +4,15 @@
 let board        = null;
 let answers      = null;
 let boardSize    = 10;
-let answered     = false;   // リサイズ判定との互換用
-let pendingCells = [];      // [{r,c},...] 選択中のセル（最大4）
-let pendingDir   = null;    // {dr,dc} | null  2セル目で確定する方向
-let foundIndices = [];      // answers[] の発見済みインデックス配列
-let gameFinished = false;   // 回答完了後は true
+let answered     = false;
+let pendingCells = [];
+let pendingDir   = null;
+let foundIndices = [];
+let gameFinished = false;
+
+// タイマー
+let timerInterval  = null;
+let timerStartTime = null;
 
 // ── DOM ────────────────────────────────────────────────
 const boardSizeEl        = document.getElementById('boardSize');
@@ -20,12 +24,14 @@ const boardEl            = document.getElementById('board');
 const svgOverlay         = document.getElementById('svgOverlay');
 const boardWrapper       = document.getElementById('boardWrapper');
 const foundCountEl       = document.getElementById('foundCountEl');
+const timerEl            = document.getElementById('timerEl');
 const clearBtn           = document.getElementById('clearBtn');
 const finishBtn          = document.getElementById('finishBtn');
 const errorMsg           = document.getElementById('errorMsg');
 const resultSection      = document.getElementById('resultSection');
 const foundCountResultEl = document.getElementById('foundCountResultEl');
 const totalCountResultEl = document.getElementById('totalCountResultEl');
+const clearTimeEl        = document.getElementById('clearTimeEl');
 const verdictEl          = document.getElementById('verdictEl');
 const messageEl          = document.getElementById('messageEl');
 const nextBtn            = document.getElementById('nextBtn');
@@ -38,6 +44,33 @@ const LINE_COLORS = [
     '#00897b', '#6d4c41',
 ];
 
+// ── ターゲット個数（期待値の四捨五入、最低1個） ──────────
+// E(N) = 4(N-3)(2N-3)/81
+function getTargetCount(n) {
+    const expected = 4 * (n - 3) * (2 * n - 3) / 81;
+    return Math.max(1, Math.round(expected));
+}
+
+// ── タイマー ───────────────────────────────────────────
+function startTimer() {
+    stopTimer();
+    timerStartTime = performance.now();
+    timerEl.textContent = '0.0';
+    timerInterval = setInterval(() => {
+        const sec = (performance.now() - timerStartTime) / 1000;
+        timerEl.textContent = sec.toFixed(1);
+    }, 100);
+}
+
+function stopTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    if (timerStartTime === null) return 0;
+    return (performance.now() - timerStartTime) / 1000;
+}
+
 // ── イベント ───────────────────────────────────────────
 startBtn.addEventListener('click', startGame);
 regenBtn.addEventListener('click', newBoard);
@@ -46,7 +79,6 @@ finishBtn.addEventListener('click', finishGame);
 clearBtn.addEventListener('click', () => clearPending());
 nextBtn.addEventListener('click', newBoard);
 
-// セルクリック（イベント委譲：boardEl に1回だけ登録）
 boardEl.addEventListener('click', e => {
     const cell = e.target.closest('.cell');
     if (!cell || gameFinished) return;
@@ -169,10 +201,9 @@ function ensureSvgSize() {
 }
 
 function updateFoundCounter() {
-    foundCountEl.textContent = `${foundIndices.length}個`;
+    foundCountEl.textContent = `${foundIndices.length} / ${answers.length}`;
 }
 
-// リサイズ後にセルのクラスを再付与
 function reapplyCellClasses() {
     foundIndices.forEach((ansIdx, i) => {
         const color = LINE_COLORS[i % LINE_COLORS.length];
@@ -221,7 +252,6 @@ function flashPending(type) {
 
 // ── セルクリックハンドラ ───────────────────────────────
 function handleCellClick(r, c) {
-    // 1文字目：志のみ受け付ける
     if (pendingCells.length === 0) {
         if (board[r][c] !== '志') return;
         pendingCells = [{ r, c }];
@@ -230,7 +260,6 @@ function handleCellClick(r, c) {
         return;
     }
 
-    // 同一セルを再クリック → 選択解除
     if (pendingCells.some(p => p.r === r && p.c === c)) {
         clearPending();
         return;
@@ -240,7 +269,6 @@ function handleCellClick(r, c) {
     const dr   = r - last.r;
     const dc   = c - last.c;
 
-    // 2文字目：方向確定
     if (pendingCells.length === 1) {
         if (Math.abs(dr) > 1 || Math.abs(dc) > 1) { clearPending(); return; }
         if (board[r][c] !== '布') { flashPending('error'); return; }
@@ -250,7 +278,6 @@ function handleCellClick(r, c) {
         return;
     }
 
-    // 3・4文字目：方向一貫性チェック
     const expectedChar = ['志', '布', '志', '市'][pendingCells.length];
     if (dr !== pendingDir.dr || dc !== pendingDir.dc) { flashPending('error'); return; }
     if (board[r][c] !== expectedChar) { flashPending('error'); return; }
@@ -267,8 +294,8 @@ function validateAndConfirm() {
         a.startRow === s.r && a.startCol === s.c &&
         a.endRow   === e.r && a.endCol   === e.c
     );
-    if (matchIdx === -1)                    { flashPending('error');     return; }
-    if (foundIndices.includes(matchIdx))    { flashPending('duplicate'); return; }
+    if (matchIdx === -1)                 { flashPending('error');     return; }
+    if (foundIndices.includes(matchIdx)) { flashPending('duplicate'); return; }
     confirmFound(matchIdx);
 }
 
@@ -287,6 +314,11 @@ function confirmFound(matchIdx) {
     drawSingleArrow(answers[matchIdx], color);
     updateFoundCounter();
     clearPending();
+
+    // 全発見 → 自動クリア（少し間を置いてから）
+    if (foundIndices.length === answers.length) {
+        setTimeout(finishGame, 300);
+    }
 }
 
 // ── SVG 矢印描画 ───────────────────────────────────────
@@ -352,8 +384,17 @@ function startGame() {
 }
 
 function newBoard() {
-    board        = generateBoard(boardSize);
-    answers      = findAnswers(board);
+    stopTimer();
+
+    // ターゲット個数になるまで盤面を再生成
+    const target = getTargetCount(boardSize);
+    let attempts = 0;
+    do {
+        board   = generateBoard(boardSize);
+        answers = findAnswers(board);
+        attempts++;
+    } while (answers.length !== target && attempts < 2000);
+
     answered     = false;
     pendingCells = [];
     pendingDir   = null;
@@ -370,15 +411,23 @@ function newBoard() {
     regenBtn.disabled    = false;
     resetBtn.disabled    = false;
     updateFoundCounter();
+
+    startTimer();
 }
 
 function finishGame() {
     if (gameFinished) return;
     gameFinished = true;
     answered     = true;
+
+    const clearSec = stopTimer();
+
     clearPending();
     finishBtn.disabled = true;
     clearBtn.disabled  = true;
+
+    // タイマーを最終値で固定表示
+    timerEl.textContent = clearSec.toFixed(1);
 
     const total     = answers.length;
     const found     = foundIndices.length;
@@ -396,13 +445,13 @@ function finishGame() {
 
     foundCountResultEl.textContent = `${found}個`;
     totalCountResultEl.textContent = `${total}個`;
-    verdictEl.textContent = isCorrect ? '正解！' : '不正解';
+    clearTimeEl.textContent        = `${clearSec.toFixed(1)}秒`;
+    verdictEl.textContent = isCorrect ? 'クリア！' : 'ギブアップ';
     verdictEl.className   = `verdict ${isCorrect ? 'correct' : 'wrong'}`;
-    messageEl.textContent = buildMessage(isCorrect, found, total);
+    messageEl.textContent = buildMessage(isCorrect, found, total, clearSec);
     resultSection.hidden  = false;
 
-    // X（Twitter）共有ボタンを設定して表示
-    shareBtn.href   = buildShareUrl(isCorrect, found, total);
+    shareBtn.href   = buildShareUrl(isCorrect, found, total, clearSec);
     shareBtn.hidden = false;
 
     requestAnimationFrame(() =>
@@ -410,32 +459,28 @@ function finishGame() {
     );
 }
 
-function buildShareUrl(isCorrect, found, total) {
+function buildMessage(isCorrect, found, total, sec) {
+    if (isCorrect) {
+        const s = sec.toFixed(1);
+        if (sec < 30)  return `${s}秒！驚異的なスピードです！`;
+        if (sec < 60)  return `${s}秒でクリア！素晴らしい！`;
+        if (sec < 120) return `${s}秒でクリア！`;
+        return `${s}秒でクリア。次はもっと速く！`;
+    }
+    const missed = total - found;
+    if (found === 0) return `${total}個すべて見逃しました。グレーの箇所を確認しましょう。`;
+    if (missed === 1) return `惜しい！あと1個見つけられませんでした。`;
+    return `あと${missed}個残っていました。グレーの箇所を確認しましょう。`;
+}
+
+function buildShareUrl(isCorrect, found, total, sec) {
     const appUrl = 'https://shibushishi-ikutsu.vercel.app/';
     let text;
     if (isCorrect) {
-        if (total === 0) {
-            text = `【志布志市はいくつ？】${boardSize}×${boardSize}の盤面で0個を正確に見抜きました！`;
-        } else {
-            text = `【志布志市はいくつ？】${boardSize}×${boardSize}の盤面で志布志市を全${total}個発見しました！`;
-        }
+        text = `【志布志市はいくつ？】${boardSize}×${boardSize}の盤面（${total}個）を${sec.toFixed(1)}秒でクリア！`;
     } else {
-        text = `【志布志市はいくつ？】${boardSize}×${boardSize}の盤面で志布志市を${found}/${total}個発見しました！`;
+        text = `【志布志市はいくつ？】${boardSize}×${boardSize}の盤面で${found}/${total}個発見（ギブアップ）`;
     }
     text += '\n#志布志市はいくつ';
     return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(appUrl)}`;
-}
-
-function buildMessage(isCorrect, found, total) {
-    if (isCorrect) {
-        if (total === 0) return '1個もない盤面を正確に見抜きました！';
-        if (total === 1) return '1個を確実に見つけました！';
-        if (total >= 8)  return `全${total}個！難問を完全攻略しましたね。`;
-        return `全${total}個をすべて発見しました！すごい！`;
-    }
-    const missed = total - found;
-    if (total === 0)  return '実はこの盤面には1個もありませんでした！';
-    if (found === 0)  return `${total}個すべて見逃しました。グレーの箇所を確認しましょう。`;
-    if (missed === 1) return `惜しい！あと1個見つけられませんでした。`;
-    return `${missed}個見逃しました。グレーの箇所を確認しましょう。`;
 }
