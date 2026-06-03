@@ -43,8 +43,8 @@ const rankingRegister    = document.getElementById('rankingRegister');
 const playerNameInput    = document.getElementById('playerNameInput');
 const registerBtn        = document.getElementById('registerBtn');
 const rankResultEl       = document.getElementById('rankResultEl');
-const rankingModal       = document.getElementById('rankingModal');
-const closeRankingBtn    = document.getElementById('closeRankingBtn');
+const rankingSection     = document.getElementById('rankingSection');
+const backToGameBtn      = document.getElementById('backToGameBtn');
 const rankingBoardSize   = document.getElementById('rankingBoardSize');
 const loadRankingBtn     = document.getElementById('loadRankingBtn');
 const rankingTableArea   = document.getElementById('rankingTableArea');
@@ -92,9 +92,8 @@ clearBtn.addEventListener('click', () => clearPending());
 nextBtn.addEventListener('click', newBoard);
 
 // ランキング
-rankingBtn.addEventListener('click', () => openRankingModal());
-closeRankingBtn.addEventListener('click', () => closeRankingModal());
-rankingModal.addEventListener('click', e => { if (e.target === rankingModal) closeRankingModal(); });
+rankingBtn.addEventListener('click', showRankingSection);
+backToGameBtn.addEventListener('click', hideRankingSection);
 loadRankingBtn.addEventListener('click', () => loadRanking(parseInt(rankingBoardSize.value)));
 registerBtn.addEventListener('click', handleRegister);
 
@@ -559,13 +558,17 @@ async function handleRegister() {
     }
 }
 
-function openRankingModal() {
-    rankingModal.hidden = false;
-    loadRanking(parseInt(rankingBoardSize.value));
+function showRankingSection() {
+    gameSection.hidden    = true;
+    rankingSection.hidden = false;
+    rankingBoardSize.value = String(boardSize);
+    loadRanking(boardSize);
+    rankingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function closeRankingModal() {
-    rankingModal.hidden = true;
+function hideRankingSection() {
+    rankingSection.hidden = true;
+    if (board) gameSection.hidden = false;
 }
 
 async function loadRanking(size) {
